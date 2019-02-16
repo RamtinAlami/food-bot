@@ -5,25 +5,37 @@ import time
 import json
 
 # NEED TO IMPLEMENT A START AND END SO SMALLER SECTIONS CAN BE PARSED
-class bot:
+class Bot:
     def __init__(self, sitemaps):
         pass
 
-class KG_agent(bot):
+class KG_agent(Bot):
     def __init__(self, sitemap):
         pass
 
-class RR_agent(bot):
+class RR_agent(Bot):
     def __init__(self, sitemap):
         pass
 
-class KG_parser:
-    def __init__(self, html_source):
-        # html source is str of text of page
-        # NEED TO ADD LINK HERE INSTEAD OF TEXT
-        self.url = "will be added"
-        self.soup = BeautifulSoup(html_source, 'lxml')
+class Parser:
+    def __init__(self, url):
+        self.url = url
+        self.soup = self.get_soup(url)
+
+    def get_soup(self, url):
+        try:
+            html_source = requests.get(url).text
+            soup = BeautifulSoup(html_source, 'lxml')
+        except:
+            # NEEDS TO BE HANDLED THE CALLER TO SKIP AND GO TO NEXT url link
+            raise ConnectionError
+        return soup
+
+class KG_parser(Parser):
+    def __init__(self, url):
+        super().__init__(url)
         self.json_data = self.get_json_data(self.soup)
+
 
     def get_json_data(self, soup):
         # KG has most data stored in a json section that can be parsed
@@ -55,16 +67,45 @@ class KG_parser:
 
     def get_categories(self):
         # returns a tuple of categories
-        """
-
-        THIS NEEDS MORE WORK AND THE CATEGORIES NEED BE DOUBLE CHECKED
-        FOR THE VALIDY OF THEM 
-
-        """
+        # removes time categories as can be recalculated
+        # removes buffer categories 
+        # seperates mix categories
         main_category = self.json_data["recipeCategory"]
         keywords = self.json_data["keywords"].split(",")
         category_list = [main_category] + keywords
+        self.clean_categories(category_list)
         return category_list
+    
+    def clean_categories(self, input_list):
+        # clean categories 
+        remove_item_list = ['Time To Make', 'High In...']
+        remove_item_list += [self.find_time_item(input_list)]
+        self.sepreate_sub_categories(input_list)
+        for item in remove_item_list:
+            self.try_remove(input_list, item)
+    
+    def find_time_item(self, input_list):
+        # given a category list, returns the time item to be removed
+        time_item = None
+        for item in input_list:
+            if item[0] == "<":
+                time_item = item
+                break
+        return time_item
+    
+    def sepreate_sub_categories(self, input_list):
+        # seperate mix categories such as "Heirloom/Historical" to 2 seperate categories
+        seperatable = [item for item in input_list if len(item.split("/")) > 1]
+        for item in seperatable:
+            self.try_remove(input_list, item) # remove mix
+            input_list += item.split("/") # add items as individuals
+
+    def try_remove(self, input_list, item):
+        # goes through a list and tries to remove the item if present
+        try:
+            input_list.remove(item)
+        except:
+            pass
     
     def get_url(self):
         # returns a link as a string
@@ -94,11 +135,21 @@ class KG_parser:
         return publisher
     
     def get_meta(self):
-        # returns a tuple with (author name, date published)
+        # returns a tuple with (author name, date published <dictionary>)
         author_name = self.json_data["author"]
         date_published = self.json_data["datePublished"]
-        # need to fix data to dictionary of year, day, month
-        return author_name, date_published
+        formated_date = self.format_date(date_published)
+        return author_name, formated_date
+    
+    def format_date(self, date_string):
+        try:
+            date = date_string.split("T")[0]
+            date = date.split("-")
+            output_date = {"year":date[0], "month":date[1], "day":date[2]}
+        except:
+            output_date = date_string
+
+        return output_date
 
     def get_yield(self):
         # returns the number of servings as a string
@@ -114,9 +165,6 @@ class KG_parser:
         # returns a list of reviews it can find on the page
         top_review = self.json_data["review"][0]["description"]
         return [top_review]
-    
-    def test(self):
-        print(self.get_reviews())
     
 
 class RR_parser:
@@ -174,9 +222,6 @@ class RR_parser:
 
 
 if __name__ == "__main__":
-    with open("KG_sample.html") as sample_html:
-        html_source = sample_html.read()
-
-    parser = KG_parser(html_source)
+    parser = KG_parser("https://www.geniuskitchen.com/recipe/beths-melt-in-your-mouth-barbecue-ribs-oven-107786")
     parser.test()
     
