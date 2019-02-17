@@ -6,15 +6,30 @@ import json
 
 # NEED TO IMPLEMENT A START AND END SO SMALLER SECTIONS CAN BE PARSED
 class Bot:
-    def __init__(self, sitemaps):
-        pass
+    def __init__(self, sitemap, pause_time):
+        self.pause_time = pause_time
+        self.urls = self.get_links(self.get_soup(sitemap))
+    
+    def get_soup(self, sitemap):
+        with open(sitemap) as file:
+            source = file.read()
+        soup = BeautifulSoup(source, 'lxml')
+        return soup
+    
+    def get_links(self, soup):
+        url_list_tags = soup.findAll("loc")
+        url_list = [url_list_tag.text for url_list_tag in url_list_tags]
+        return url_list
 
 class KG_agent(Bot):
     def __init__(self, sitemap):
         pass
 
-class RR_agent(Bot):
-    def __init__(self, sitemap):
+class AR_agent(Bot):
+    def parse(self, url):
+        parser = AR_parser(url)
+    
+    def post(self):
         pass
 
 class Parser:
@@ -31,49 +46,29 @@ class Parser:
             raise ConnectionError
         return soup
     
-    def pretty_print(self):
-        url = self.get_url()
-        name = self.get_name()
-        ingredients = self.get_ingredients()
-        directions = self.get_directions()
-        rating = self.get_rating()
-        img_link = self.get_img_link()
-        categories = self.get_categories()
-        time = self.get_time()
-        publisher = self.get_publisher()
-        meta = self.get_meta()
-        food_yield = self.get_yield()
-        description = self.get_description()
-        reviews = self.get_reviews()
+    def try_except(function):
+        try:
+            return function
+        except:
+            return None
 
-        print(
-            f"""Website : {url}
+    
+    def get_data_dictionary(self):
+        data = dict()
 
-            Img : {img_link}
-
-            Publisher : {publisher}
-
-            Name : {name}
-
-            Meta : {meta}
-
-            Categories : {categories}
-
-            Rating : {rating}
-
-            Cook time : {time}
-
-            Yield : {food_yield}
-
-            Description : {description}
-
-            Ingredients : {ingredients}
-
-            Directions : {directions}
-
-            Reviews : {reviews}
-            """
-        )
+        data["name"] = self.get_name()
+        data["url"] = self.get_url()
+        data["ingredients"] = self.get_ingredients()
+        data["directions"] = self.get_directions()
+        data["rating"] = self.get_rating()
+        data["img_link"] = self.get_img_link()
+        data["categories"] = self.get_categories()
+        data["time"] = self.get_time()
+        data["publisher"] = self.get_publisher()
+        data["meta"] = self.get_meta()
+        data["food_yield"] = self.get_yield()
+        data["description"] = self.get_description()
+        data["reviews"] = self.get_reviews()
 
 
 class JSON_schema(Parser):
@@ -87,22 +82,26 @@ class JSON_schema(Parser):
         data = json.loads(json_text)
         return data 
     
+    @Parser.try_except
     def get_ingredients(self):
         # returns a list of ingredients unformatted 
         ingredient_list = self.json_data["recipeIngredient"]
         return ingredient_list
     
+    @Parser.try_except
     def get_directions(self):
         # returns a list of directions in order
         direction_dict_formated = self.json_data["recipeInstructions"]
         direction_list = [item["text"] for item in direction_dict_formated]
         return direction_list
     
+    @Parser.try_except
     def get_img_link(self):
         # returns a link to the img source 
         img_link = self.json_data["image"]
         return img_link
 
+    @Parser.try_except
     def get_categories(self):
         # returns a tuple of categories
         # removes time categories as can be recalculated
@@ -114,7 +113,7 @@ class JSON_schema(Parser):
         category_list = [main_category] + keywords
         self.clean_categories(category_list)
         return category_list
-
+    
     def clean_categories(self, input_list):
         # clean categories 
         remove_item_list = ['Time To Make', 'High In...']
@@ -146,21 +145,25 @@ class JSON_schema(Parser):
         except:
             pass
     
+    @Parser.try_except
     def get_url(self):
         # returns a link as a string
         return self.url
     
+    @Parser.try_except
     def get_name(self):
         # returns the name as a string
         name = self.json_data["name"]
         return name
 
+    @Parser.try_except
     def get_nutrition(self):
         # returns a dictionary of nutrition values
         nutrition = self.json_data["nutrition"]
         del nutrition["@type"]
         return nutrition
     
+    @Parser.try_except
     def get_time(self):
         # returns a tuple in the format (prep_time, cooking_time, total_time)
         prep_time = self.json_data["prepTime"]
@@ -168,11 +171,13 @@ class JSON_schema(Parser):
         total_time = self.json_data["totalTime"]
         return prep_time, cooking_time, total_time
     
+    @Parser.try_except
     def get_publisher(self):
         # returns the publisher name as a string
         publisher = self.json_data["publisher"]["name"]
         return publisher
     
+    @Parser.try_except
     def get_meta(self):
         # returns a tuple with (author name, date published <dictionary>)
         author_name = self.json_data["author"]
@@ -190,16 +195,19 @@ class JSON_schema(Parser):
 
         return output_date
 
+    @Parser.try_except
     def get_yield(self):
         # returns the number of servings as a string
         recipe_yield = self.json_data["recipeYield"]
         return recipe_yield
     
+    @Parser.try_except
     def get_description(self):
         # returns a description of the food 
         description = self.json_data["description"]
         return description
     
+    @Parser.try_except
     def get_reviews(self):
         # returns a list of reviews it can find on the page
         top_review = self.json_data["review"][0]["description"]
@@ -210,24 +218,21 @@ class GK_parser(JSON_schema):
     def __init__(self, url):
         super().__init__(url)
     
+    @Parser.try_except
     def get_rating(self):
         # returns tuple in the format of (rating, # ratings)
         review_count = int(self.json_data["aggregateRating"]["reviewCount"])
         rating = float(self.soup.find("span", class_="sr-only").text)
         return rating, review_count
 
+    
     def get_reviews(self):
         # returns a list of reviews it can find on the page
         pass
 
-class HTML_schema:
-    def __init__(self, html_source, url):    
-        #TODO remove the html_source and convert to URL retrival
-        with open(html_source) as source:
-            self.source = source.read()
-
-        self.soup = BeautifulSoup(self.source, 'lxml') 
-        self.url = url
+class HTML_schema(Parser):
+    def __init__(self, url):
+        super().__init__(url)
     
     def get_ingredients(self):
         # returns a list of ingredients unformatted 
@@ -317,8 +322,8 @@ class HTML_schema:
 
 class AR_parser(HTML_schema):
     # TODO remove the html_sources
-    def __init__(self, html_source, url):
-        super().__init__(html_source, url)
+    def __init__(self, html_source):
+        super().__init__(html_source)
     
     def get_directions(self):
         raw_directions = super().get_directions()
@@ -341,11 +346,8 @@ class AR_parser(HTML_schema):
         script_list = [script_tag.text for script_tag in script_tags if script_tag]
         json_data = [script for script in script_list if script[:26] == "\n    var reviewsInitialSet" ][0][29:-2]
         return json_data
-    
-
 
 if __name__ == "__main__":
-    html_source = "AR_sample.html"
-    parser = AR_parser(html_source, "www")
-    parser.test()
-    
+    html_source = "recipedetail.xml"
+    parser = AR_agent(html_source, 1.0)
+    print(len(parser.urls))
