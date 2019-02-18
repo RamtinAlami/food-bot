@@ -18,11 +18,14 @@ class Parser:
         return soup
     
     def try_except_getter(function):
-        try:
-            function()  # tests the function
-            return function
-        except:
-            return lambda self: None
+        def wrapper(*args):
+            try:
+                value =  function(*args)
+                return value
+            except:
+                return None
+
+        return wrapper
 
     
     def get_data_dictionary(self):
@@ -310,6 +313,20 @@ class HTML_schema(Parser):
         return description
     
     @Parser.try_except_getter
+    def get_url(self):
+        return self.url
+    
+    # TODO fix this
+    @Parser.try_except_getter
+    def get_img_link(self):
+        return self.url
+    
+    # TODO fix this
+    @Parser.try_except_getter
+    def get_meta(self):
+        return self.url
+    
+    @Parser.try_except_getter
     def get_reviews(self):
         return []
 
@@ -345,6 +362,6 @@ class AR_parser(HTML_schema):
 if __name__ == "__main__":
     url_real = "https://www.geniuskitchen.com/recipe/the-best-easy-beef-and-broccoli-stir-fry-99476"
     url_broken = "https://www.geniuskitchen.com//recipe?ref=nav"
-    parser = GK_parser(url_real)
+    parser = AR_parser(url_broken)
     data = parser.get_data_dictionary()
     print(data)
