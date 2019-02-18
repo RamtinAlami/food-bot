@@ -2,6 +2,7 @@ import csv
 import requests
 from bs4 import BeautifulSoup
 import json
+import pprint
 
 class Parser:
     def __init__(self, url):
@@ -17,7 +18,7 @@ class Parser:
             raise ConnectionError
         return soup
     
-    def try_except_getter(function):
+    def try_catch_getter(function):
         def wrapper(*args):
             try:
                 value =  function(*args)
@@ -65,44 +66,44 @@ class JSON_schema(Parser):
         return data 
     
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_ingredients(self):
         # returns a list of ingredients unformatted 
         ingredient_list = self.json_data["recipeIngredient"]
         return ingredient_list
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_directions(self):
         # returns a list of directions in order
         direction_dict_formated = self.json_data["recipeInstructions"]
         direction_list = [item["text"] for item in direction_dict_formated]
         return direction_list
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_img_link(self):
         # returns a link to the img source 
         img_link = self.json_data["image"]
         return img_link
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_url(self):
         # returns a link as a string
         return self.url
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_name(self):
         # returns the name as a string
         name = self.json_data["name"]
         return name
 
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_nutrition(self):
         # returns a dictionary of nutrition values
         nutrition = self.json_data["nutrition"]
         del nutrition["@type"]
         return nutrition
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_time(self):
         # returns a tuple in the format (prep_time, cooking_time, total_time)
         prep_time = self.json_data["prepTime"]
@@ -110,13 +111,13 @@ class JSON_schema(Parser):
         total_time = self.json_data["totalTime"]
         return prep_time, cooking_time, total_time
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_publisher(self):
         # returns the publisher name as a string
         publisher = self.json_data["publisher"]["name"]
         return publisher
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_meta(self):
         # returns a tuple with (author name, date published <dictionary>)
         author_name = self.json_data["author"]
@@ -134,25 +135,25 @@ class JSON_schema(Parser):
 
         return output_date
 
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_yield(self):
         # returns the number of servings as a string
         recipe_yield = self.json_data["recipeYield"]
         return recipe_yield
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_description(self):
         # returns a description of the food 
         description = self.json_data["description"]
         return description
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_reviews(self):
         # returns a list of reviews it can find on the page
         top_review = self.json_data["review"][0]["description"]
         return [top_review]
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_categories(self):
         # returns a list of categories
         main_category = self.json_data["recipeCategory"]
@@ -166,14 +167,14 @@ class GK_parser(JSON_schema):
     def __init__(self, url):
         super().__init__(url)
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_rating(self):
         # returns tuple in the format of (rating, # ratings)
         review_count = int(self.json_data["aggregateRating"]["reviewCount"])
         rating = float(self.soup.find("span", class_="sr-only").text)
         return rating, review_count
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_categories(self):
         # returns a tuple of categories
         # removes time categories as can be recalculated
@@ -221,21 +222,21 @@ class HTML_schema(Parser):
     def __init__(self, url):
         super().__init__(url)
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_ingredients(self):
         # returns a list of ingredients unformatted 
         ingredient_tags = self.soup.findAll("span", attrs = {"itemprop" : "recipeIngredient"})
         ingredients = [ingredient_tag.text for ingredient_tag in ingredient_tags]
         return ingredients
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_directions(self):
         # returns a list of directions in order
         direction_tags = self.soup.findAll("span", class_ ="recipe-directions__list--item")
         directions = [direction_tag.text for direction_tag in direction_tags]
         return directions
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_rating(self):
         # returns tuple in the format of (rating, rating_count)
         rating_tag = self.soup.find("meta", attrs = {"itemprop" : "ratingValue"})
@@ -244,7 +245,7 @@ class HTML_schema(Parser):
         rating_count = int(rating_count_tag["content"])
         return rating, rating_count
 
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_categories(self):
         # returns a list of categories
         category_tags = self.soup.findAll("meta", {"itemprop" : "recipeCategory"})
@@ -253,25 +254,25 @@ class HTML_schema(Parser):
         all_categories = cuisines + categories
         return all_categories
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_cuisines(self):
         cuisine_tags = self.soup.findAll("meta", {"itemprop" : "recipeCuisine"})
         cuisines = [cuisine_tag["content"] for cuisine_tag in cuisine_tags]
         return cuisines
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_link(self):
         # returns a link as a string
         return self.url
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_name(self):
         # returns the name as a string
         name_tag = self.soup.find("h1", {"itemprop" : "name"})
         name = name_tag.text
         return name
 
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_nutrition(self):
         # returns a dictionary of nutrition values
         nutritions = dict()
@@ -283,7 +284,7 @@ class HTML_schema(Parser):
         nutritions["sodiumContent"] = float(self.soup.find("span", {"itemprop" : "sodiumContent"}).text)
         return nutritions
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_time(self):
         # returns a tuple in the format (prep_time, cooking_time, total_time)
         prep_time = self.soup.find("time", {"itemprop" : "prepTime"})["datetime"]
@@ -291,42 +292,42 @@ class HTML_schema(Parser):
         total_time = self.soup.find("time", {"itemprop" : "totalTime"})["datetime"]
         return prep_time, cooking_time, total_time
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_publisher(self):
         # returns the publisher name as a string
         publisher_tag = self.soup.find("meta", attrs={"property":"og:site_name"})
         publisher = publisher_tag["content"]
         return publisher
 
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_yield(self):
         # returns the number of servings as a string
         recipe_yield_tag = self.soup.find("meta", attrs={"itemprop" : "recipeYield"})
         recipe_yield = recipe_yield_tag["content"]
         return recipe_yield
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_description(self):
         # returns a description of the food 
         description_tag = self.soup.find("meta", attrs={"id" : "metaDescription"})
         description = description_tag["content"]
         return description
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_url(self):
         return self.url
     
     # TODO fix this
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_img_link(self):
-        return self.url
+        pass
     
     # TODO fix this
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_meta(self):
-        return self.url
+        pass
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_reviews(self):
         return []
 
@@ -335,7 +336,7 @@ class AR_parser(HTML_schema):
     def __init__(self, html_source):
         super().__init__(html_source)
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_directions(self):
         raw_directions = super().get_directions()
         cleaned_directions = self.clean_directions(raw_directions)
@@ -346,7 +347,7 @@ class AR_parser(HTML_schema):
         directions = [direction[0] for direction in directions if len(direction) > 1]
         return directions
     
-    @Parser.try_except_getter
+    @Parser.try_catch_getter
     def get_reviews(self):
         # returns a list of reviews it can find on the page
         review_data = json.loads(self.get_review_json())["reviews"]["Reviews"]
@@ -354,14 +355,15 @@ class AR_parser(HTML_schema):
         return reviews
 
     def get_review_json(self):
-        script_tags = self.soup.findAll("script")
-        script_list = [script_tag.text for script_tag in script_tags if script_tag]
-        json_data = [script for script in script_list if script[:26] == "\n    var reviewsInitialSet" ][0][29:-2]
+        json_section = self.soup.find("section", class_="ar_recipe_index full-page")
+        scripts = json_section.findAll("script")
+        json_data = [script.text for script in scripts][-2][30:-3]
         return json_data
     
 if __name__ == "__main__":
     url_real = "https://www.geniuskitchen.com/recipe/the-best-easy-beef-and-broccoli-stir-fry-99476"
-    url_broken = "https://www.geniuskitchen.com//recipe?ref=nav"
+    url_broken = "https://www.allrecipes.com/recipe/73021/summer-squash-chicken-alfredo/?internalSource=rotd&referringId=1796&referringContentType=Recipe%20Hub"
     parser = AR_parser(url_broken)
     data = parser.get_data_dictionary()
-    print(data)
+    printer = pprint.PrettyPrinter()
+    printer.pprint(data)
