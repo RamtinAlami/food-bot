@@ -10,28 +10,64 @@ class Bot:
     BOT_ID_COUNTER = 0
     def __init__(self, sitemaps, pause_time, parser):
         self.pause_time = pause_time
-        self.sitemaps = sitemaps
-        self.current_sitemap_urls = self.get_current_sitemap().urls
+        self.sitemaps_files = sitemaps
+        self.sitemap = self.get_current_sitemap() 
+        self.time_of_last_request = time.time()
+        self.id = Bot.BOT_ID_COUNTER
+        Bot.BOT_ID_COUNTER += 1
     
     def get_current_sitemap(self):
-        pass
+        for sitemap_file in self.sitemaps_files:
+            try:
+                sitemap = Sitemap(sitemap_file)
+                yield sitemap
+            except:
+                pass
 
-    def get_soup(self, sitemap):
-        with open(sitemap) as file:
-            source = file.read()
-        soup = BeautifulSoup(source, 'lxml')
-        return soup
+        raise AssertionError("End of sitemaps")
+        
+
+    def parse(self, url):
+        try:
+            site = self.parser(url)
+            data = site.get_data_dictionary()
+        except ConnectionError:
+            # TODO turn this into logging
+            pass
+        except TypeError:
+            pass
+        except Exception as e:
+            # TODO turn this into log file
+            print(e)
+
     
-    def get_links(self, soup):
-        url_list_tags = soup.findAll("loc")
-        url_list = [url_list_tag.text for url_list_tag in url_list_tags]
-        return url_list
-    
-    def add_sitemap(self, soup):
+    def publish(self, data_dict):
+        # TODO establish a method of publishing
         pass
     
-    def force_pause(self):
-        pass
+    def add_sitemap_file(self, file):
+        self.sitemaps_files.append(file)
+
+    def get_url(self):
+        while True:
+            try:
+                url = next(self.sitemap)
+            except StopIteration:
+                self.sitemap = self.get_current_sitemap()
+            except Exception as e:
+                # TODO turn this into log file
+                print(e)
+    
+    def force_pause(self, pause_time):
+        while (time.time() - self.time_of_last_request) < pause_time:
+            time.sleep(0.05)
+    
+    def run(self):
+        self.force_pause(self.pause_time)
+        url = self.get_url()
+        data_dict = self.parse(url)
+        self.time_of_last_request = time.time()
+        self.publish(data_dict)
 
 class MasterBot:
     def __init__(self, bots):
@@ -39,10 +75,33 @@ class MasterBot:
         self.schedule = Schedule(self.bots)
     
     def add_bot(self, sitemaps, pause_time, parser):
-        pass
+        new_bot = Bot(sitemap, pause_time, parser)
+        self.bots.append(new_bot)
+        self.schedule = Schedule(self.bots)
     
+    def remove_bot(self, bot):
+        for bot_object, pause_time in self.bots:
+            if bot_object == bot:
+                self.bots.remove(bot)
+                self.schedule = Schedule(self.bots)
+                return
+        else:
+            raise ValueError
+
     def run(self):
-        pass
+        bot, pause_time = next(self.schedule)
+        bot.run()
+        time.sleep(pause_time)
+    
+    def run_bot(self, bot):
+        try:
+            self.bot.run()
+        except AssertionError:
+            self.remove_bot(bot)
+            self.run()
+        except Exception as e:
+            # TODO log exception
+            pass
     
 
 # TODO REQUIRES A LOT OF TESTING
@@ -65,16 +124,6 @@ class Schedule:
     
     def add_bot(self, bot, pause_time):
         self.bots.append((bot, pause_time))
-    
-    def remove_bot(self, bot):
-        for bot_object, pause_time in self.bots:
-            if bot_object == bot:
-                self.bots.remove((bot_object, pause_time))
-                break
-        self.schedule = self.find_schedule()
-        
-    
-    
 
 class Sitemap:
     def __init__(self, xml_file):
