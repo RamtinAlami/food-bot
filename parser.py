@@ -1,4 +1,3 @@
-import csv
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -14,7 +13,6 @@ class Parser:
             html_source = requests.get(url).text
             soup = BeautifulSoup(html_source, 'lxml')
         except:
-            # NEEDS TO BE HANDLED THE CALLER TO SKIP AND GO TO NEXT url link
             raise ConnectionError
         return soup
     
@@ -224,7 +222,7 @@ class HTML_schema(Parser):
     
     @Parser.try_catch_getter
     def get_ingredients(self):
-        # returns a list of ingredients unformatted 
+        # returns a list of ingredients unformatted
         ingredient_tags = self.soup.findAll("span", attrs = {"itemprop" : "recipeIngredient"})
         ingredients = [ingredient_tag.text for ingredient_tag in ingredient_tags]
         return ingredients
@@ -362,8 +360,10 @@ class AR_parser(HTML_schema):
     
 if __name__ == "__main__":
     url_real = "https://www.geniuskitchen.com/recipe/the-best-easy-beef-and-broccoli-stir-fry-99476"
-    url_broken = "https://www.allrecipes.com/recipe/73021/summer-squash-chicken-alfredo/?internalSource=rotd&referringId=1796&referringContentType=Recipe%20Hub"
-    parser = AR_parser(url_broken)
+    url_broken = "https://www.allrecipes.com/recipe/45957/chicken-makhani-indian-butter-chicken/?clickId=right%20rail1&internalSource=rr_feed_recipe_sb&referringId=73021%20referringContentType=recipe"
+    test_url = "https://www.bbcgoodfood.com/recipes/slow-cooker-lamb-curry"
+    test_2_url = "https://www.epicurious.com/recipes/member/views/microwave-peppy-parmesan-potatoes-1270209"
+    parser = HTML_schema(test_2_url)
     data = parser.get_data_dictionary()
     printer = pprint.PrettyPrinter()
     printer.pprint(data)
