@@ -74,10 +74,10 @@ class Bot:
         self.force_pause(self.pause_time)
         url = self.get_url()
         print(url)
-        # data_dict = self.parse(url)
-        # self.add_id(data_dict)
-        # self.time_of_last_request = time.time()
-        # self.publish(data_dict)
+        data_dict = self.parse(url)
+        self.add_id(data_dict)
+        self.time_of_last_request = time.time()
+        self.publish(data_dict)
     
     def add_id(self, data_dict):
         data_dict["id"] = self.id
@@ -89,7 +89,7 @@ class MasterBot:
         self.update_schedule()
     
     def add_bot(self, sitemaps, pause_time, parser):
-        new_bot = Bot(sitemap, pause_time, parser)
+        new_bot = Bot(sitemaps, pause_time, parser)
         self.bots.append(new_bot)
         self.update_schedule()
     
