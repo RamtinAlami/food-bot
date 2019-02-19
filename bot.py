@@ -3,7 +3,8 @@ import csv
 from bs4 import BeautifulSoup
 import time
 import json
-from parser import AR_parser, GK_parser
+from parser import AR_parser, GK_parser 
+import logging
 
 # NEED TO IMPLEMENT A START AND END SO SMALLER SECTIONS CAN BE PARSED
 class Bot:
@@ -32,13 +33,12 @@ class Bot:
             site = self.parser(url)
             data = site.get_data_dictionary()
         except ConnectionError:
-            # TODO turn this into logging
+            logging.warning("ConnectionError")
             pass
         except TypeError:
-            pass
+            logging.warning("TypeError")
         except Exception as e:
-            # TODO turn this into log file
-            print(e)
+            logging.error(e)
 
     
     def publish(self, data_dict):
@@ -53,14 +53,13 @@ class Bot:
             try:
                 url = next(self.sitemap)
             except StopIteration:
-                self.sitemap = self.get_current_sitemap()
+                logging.warning("StopIteration")
             except Exception as e:
-                # TODO turn this into log file
-                print(e)
+                logging.error(e)
     
     def force_pause(self, pause_time):
         while (time.time() - self.time_of_last_request) < pause_time:
-            time.sleep(0.05)
+            time.sleep(0.01)
     
     def run(self):
         self.force_pause(self.pause_time)
@@ -100,8 +99,7 @@ class MasterBot:
             self.remove_bot(bot)
             self.run()
         except Exception as e:
-            # TODO log exception
-            pass
+            logging.error(e)
     
 
 # TODO REQUIRES A LOT OF TESTING
@@ -118,9 +116,15 @@ class Schedule:
             index += 1 
             yield output
     
-    # TODO add a scheduling functions here
+    # TODO add a proper scheduling functions here
     def find_schedule(self):
-        pass
+        output = []
+        pause_time = 1/len(self.bots)
+        for bot in self.bots:
+            output.append((bot, pause_time))
+        
+        return output
+            
     
     def add_bot(self, bot, pause_time):
         self.bots.append((bot, pause_time))
