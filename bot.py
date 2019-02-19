@@ -5,26 +5,28 @@ import time
 import json
 from parser import AR_parser, GK_parser 
 import logging
+import pprint
 
 # NEED TO IMPLEMENT A START AND END SO SMALLER SECTIONS CAN BE PARSED
 class Bot:
     BOT_ID_COUNTER = 0
-    def __init__(self, sitemaps, pause_time, parser):
+    def __init__(self, sitemaps_files, pause_time, parser):
         self.pause_time = pause_time
-        self.sitemaps_files = sitemaps
-        self.sitemap = self.get_current_sitemap() 
+        self.sitemaps_files = self.sitemaps(sitemaps_files)
+        self.sitemap_url_generator = next(self.sitemaps_files)
         self.time_of_last_request = time.time()
         self.id = Bot.BOT_ID_COUNTER
+        self.parser = parser
         Bot.BOT_ID_COUNTER += 1
+        self.counter = 0
     
-    def get_current_sitemap(self):
-        for sitemap_file in self.sitemaps_files:
+    def sitemaps(self, sitemaps_files):
+        for sitemap_file in sitemaps_files:
             try:
                 sitemap = Sitemap(sitemap_file)
-                yield sitemap
+                yield iter(sitemap)
             except:
                 pass
-
         raise AssertionError("End of sitemaps")
         
 
@@ -32,30 +34,37 @@ class Bot:
         try:
             site = self.parser(url)
             data = site.get_data_dictionary()
+            return data
         except ConnectionError:
-            logging.warning("ConnectionError")
+            error = "ConnectionError at Bot.parse for " + url
+            logging.warning(error)
             pass
         except TypeError:
-            logging.warning("TypeError")
+            error = "TypeError at Bot.parse for " + url
+            logging.warning(error)
         except Exception as e:
-            logging.error(e)
+            error = str(e) + " at Bot.parse for " + url
+            logging.error(error)
 
     
     def publish(self, data_dict):
         # TODO establish a method of publishing
-        pass
-    
-    def add_sitemap_file(self, file):
-        self.sitemaps_files.append(file)
+        printer = pprint.PrettyPrinter()
+        printer.pprint(data_dict)
+        print("\n")    
+
 
     def get_url(self):
         while True:
             try:
-                url = next(self.sitemap)
+                return next(self.sitemap_url_generator)
             except StopIteration:
-                logging.warning("StopIteration")
+                self.sitemap_url_generator = next(self.sitemaps_files)
+                logging.warning("StopIteration at bot.get_url")
             except Exception as e:
-                logging.error(e)
+                error = str(e) + " at Bot.get_url"
+                logging.error(error)
+            
     
     def force_pause(self, pause_time):
         while (time.time() - self.time_of_last_request) < pause_time:
@@ -64,33 +73,44 @@ class Bot:
     def run(self):
         self.force_pause(self.pause_time)
         url = self.get_url()
-        data_dict = self.parse(url)
-        self.time_of_last_request = time.time()
-        self.publish(data_dict)
+        print(url)
+        # data_dict = self.parse(url)
+        # self.add_id(data_dict)
+        # self.time_of_last_request = time.time()
+        # self.publish(data_dict)
+    
+    def add_id(self, data_dict):
+        data_dict["id"] = self.id
+        self.id += 1
 
 class MasterBot:
     def __init__(self, bots):
-        self.bots = []
-        self.schedule = Schedule(self.bots)
+        self.bots = bots
+        self.update_schedule()
     
     def add_bot(self, sitemaps, pause_time, parser):
         new_bot = Bot(sitemap, pause_time, parser)
         self.bots.append(new_bot)
+        self.update_schedule()
+    
+    def update_schedule(self):
         self.schedule = Schedule(self.bots)
+        self.schedule = iter(self.schedule)
     
     def remove_bot(self, bot):
         for bot_object, pause_time in self.bots:
             if bot_object == bot:
                 self.bots.remove(bot)
-                self.schedule = Schedule(self.bots)
+                self.update_schedule()
                 return
         else:
             raise ValueError
 
     def run(self):
-        bot, pause_time = next(self.schedule)
-        bot.run()
-        time.sleep(pause_time)
+        while True:
+            bot, pause_time = next(self.schedule)
+            bot.run()
+            time.sleep(pause_time)
     
     def run_bot(self, bot):
         try:
@@ -102,13 +122,12 @@ class MasterBot:
             logging.error(e)
     
 
-# TODO REQUIRES A LOT OF TESTING
 class Schedule:
     def __init__(self, bots):
         self.bots = bots
         self.schedule = self.find_schedule()
     
-    def __next__(self):
+    def __iter__(self):
         # returns a tuple (bot, pause_time) everytime called
         index = 0
         while True:
@@ -122,9 +141,7 @@ class Schedule:
         pause_time = 1/len(self.bots)
         for bot in self.bots:
             output.append((bot, pause_time))
-        
         return output
-            
     
     def add_bot(self, bot, pause_time):
         self.bots.append((bot, pause_time))
@@ -139,19 +156,20 @@ class Sitemap:
         soup = BeautifulSoup(source, 'lxml')
         return soup
     
+    def __iter__(self):
+        for url in self.urls:
+            yield url
+    
     def extract_links(self, soup):
         link_tags = soup.findAll('loc')
         links = [link_tag.text for link_tag in link_tags]
         return links
-    
-    def __next__(self):
-        for url in self.urls:
-            yield url
 
-    def __iter__(self):
-        return self
+    
 
 if __name__ == "__main__":
-    html_source = "recipedetail.xml"
-    sitemap = Sitemap(html_source)
-    print(sitemap.urls)
+    logging.basicConfig(filename="logs.log")
+    bot1_sitemaps = ["./kg_sitemaps/sitemap-1.xml", "./kg_sitemaps/sitemap-2.xml", "./kg_sitemaps/sitemap-3.xml"]
+    bot1 = Bot(bot1_sitemaps, 1, GK_parser)
+    masterbot = MasterBot([bot1])
+    masterbot.run()
