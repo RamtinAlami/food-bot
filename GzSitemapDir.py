@@ -36,6 +36,11 @@ class GzSitemapDir:
     
     def save_files_locally(self, folder_name):
         self.save_sitemaps(folder_name)
+    
+    def clean_memory(self):
+        for file_location in self.sitemap_locations:
+            os.system(f"rm {file_location}")
+        self.sitemap_locations = []
         
 
 class Gz_sitemap:
@@ -55,11 +60,17 @@ class Gz_sitemap:
 
     def delete_gz_file(self):
         os.system(f"rm {self.file_name}.gz")
+    
 
-def gz_sitemap_dir_download(download_link, server_pause, folder_name):
-    sitemaps = GzSitemapDir(download_link, server_pause)
-    sitemaps.save_files_locally(folder_name)
-    return sitemaps.sitemap_locations
+class gz_sitemap_dir_download:
+    def __init__(self, download_link, server_pause, folder_name):
+        self.sitemaps = GzSitemapDir(download_link, server_pause)
+        self.sitemaps.save_files_locally(folder_name)
+        self.sitemap_dirs = self.sitemaps.sitemap_locations
+    
+    def clear(self):
+        self.sitemaps.clean_memory()
+
 
 if __name__ == "__main__":
     pass
