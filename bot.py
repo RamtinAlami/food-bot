@@ -6,6 +6,7 @@ import json
 from parser import AR_parser, GK_parser 
 import logging
 import pprint
+from data_save import  csv_publisher
 
 # NEED TO IMPLEMENT A START AND END SO SMALLER SECTIONS CAN BE PARSED
 class Bot:
@@ -19,6 +20,11 @@ class Bot:
         self.parser = parser
         Bot.BOT_ID_COUNTER += 1
         self.counter = 0
+
+        field_names = ["id", "name", "url", "ingredients", "directions", "rating",
+        "img_link", "categories", "time", "publisher", "meta", "food_yield",
+        "description", "nutrition", "reviews"]
+        self.csv_file = csv_publisher("genius-kitchen-recipes", field_names)
     
     def sitemaps(self, sitemaps_files):
         for sitemap_file in sitemaps_files:
@@ -48,10 +54,8 @@ class Bot:
 
     
     def publish(self, data_dict):
-        # TODO establish a method of publishing
-        printer = pprint.PrettyPrinter()
-        printer.pprint(data_dict)
-        print("\n")    
+        # TODO add try and exception for future scalability
+        self.csv_file.write(data_dict)
 
 
     def get_url(self):
@@ -114,7 +118,7 @@ class MasterBot:
     
     def run_bot(self, bot):
         try:
-            self.bot.run()
+            bot.run()
         except AssertionError:
             self.remove_bot(bot)
             self.run()
