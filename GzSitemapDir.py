@@ -27,13 +27,20 @@ class GzSitemapDir:
         return gz_sitemap.file_name
     
     def save_sitemaps(self, folder_name):
-        os.mkdir(folder_name)
+        self.make_dir(folder_name)
         for url in self.gz_sitemap_urls:
             time.sleep(self.pause_time)
             sitemap_file = self.download_sitemap(url)
-            os.system(f"mv {sitemap_file} {folder_name}/{sitemap_file}")
-            self.sitemap_locations.append(f"{folder_name}/{sitemap_file}")
+            time_id = time.time()   # to make file names unique
+            os.system(f"mv {sitemap_file} {folder_name}/{time_id}-{sitemap_file}")
+            self.sitemap_locations.append(f"{folder_name}/{time_id}-{sitemap_file}")
     
+    def make_dir(self, folder_name):
+        try: 
+            os.mkdir(folder_name)
+        except FileExistsError:
+            pass
+
     def save_files_locally(self, folder_name):
         self.save_sitemaps(folder_name)
     
@@ -49,7 +56,7 @@ class Gz_sitemap:
         self.download_link = download_link
     
     def download(self):
-        gz_file, headers = urllib.request.urlretrieve(self.download_link, self.file_name + ".gz")
+        urllib.request.urlretrieve(self.download_link, self.file_name + ".gz")
     
     def unzip(self):
         gz_file = self.file_name + ".gz"
